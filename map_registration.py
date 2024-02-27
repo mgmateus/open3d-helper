@@ -53,8 +53,6 @@ class R3D:
     def image_height(self):
         return self.__image_height
     
-
-
     
     def create_point_cloud(self, rgb, depth, camera_position, camera_orientation):
         rgb_ = o3d.geometry.Image(rgb)
@@ -94,7 +92,7 @@ class R3D:
         self.i+=1
     
     def registration(self, rgb, depth, camera_position, camera_orientation):
-        # pcd, view = self.create_point_cloud(rgb, depth, camera_position, camera_orientation)
+        pcd, view = self.create_point_cloud(rgb, depth, camera_position, camera_orientation)
         # self.__pcd += pcd
         # self.__cams.append(view)
         # geos = [self.__pcd]
@@ -102,16 +100,18 @@ class R3D:
         # self.vis.update_geometry(self.__pcd)
         # self.vis.poll_events()
         # self.vis.update_renderer()
-        self.create_point_cloud2(rgb, depth)
-        return self.__model, self.__cams
+        
+        return pcd, view
 
 
-depth_trunc = 100
-width = 672
-height = 376
-fov = 90
+# depth_trunc = 100
+# width = 672
+# height = 376
+# fov = 90
 
-reconstruction = R3D(depth_trunc, width, height, fov)
+# reconstruction = R3D(depth_trunc, width, height, fov)
+
+
 
 
     
