@@ -23,11 +23,7 @@ class R3D:
         return R.T @ T @ C
     
     def __init__(self, depth_trunc, image_width, image_height, fov):
-        self.__depth_trunc = depth_trunc
-
-        self.__pcd = o3d.geometry.PointCloud()
-        self.__cams = []
-        self.__model = o3d.t.pipelines.slam.Model(voxel_size= 1, device=o3d.core.Device("CUDA:0"))
+        
         
         fov_rad = fov * np.pi/180
         fd = (image_width/2.0) / np.tan(fov_rad/2.0)
@@ -37,14 +33,17 @@ class R3D:
 
         self.__image_width = image_width
         self.__image_height = image_height
+        self.__depth_trunc = depth_trunc
 
         self.i =0
+        self.__pcd = o3d.geometry.PointCloud()
+        self.__cams = []
+        self.vis = o3d.visualization.Visualizer()
+        self.vis.create_window()
 
-        # self.vis = o3d.visualization.Visualizer()
-        # axes = o3d.geometry.TriangleMesh.create_coordinate_frame()
-        # self.vis.create_window()
-        # self.vis.add_geometry(self.__pcd)
 
+        self.vis.add_geometry(self.__pcd)
+        
     @property
     def image_width(self):
         return self.__image_width
@@ -64,40 +63,41 @@ class R3D:
                                                                   convert_rgb_to_intensity=False)
         
         F = self.transformation_matrix(camera_position, camera_orientation)
-        return o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, self.__intrinsic), \
-            o3d.geometry.LineSet.create_camera_visualization(self.__intrinsic, F)
+        #return o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, self.__intrinsic, extrinsic=F)
     
-        # return o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, self.__intrinsic, extrinsic=F), \
-        #     o3d.geometry.LineSet.create_camera_visualization(self.__intrinsic, F)
+        return o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, self.__intrinsic, extrinsic=F), \
+            o3d.geometry.LineSet.create_camera_visualization(self.__intrinsic, extrinsic=F)
     
-    def create_point_cloud2(self, rgb, depth):
-        # T_frame_to_model = o3d.core.Tensor(np.identity(4))
-        rgb = o3d.geometry.Image(rgb)
-        depth = o3d.geometry.Image(depth)
-        input_frame = o3d.t.pipelines.slam.Frame(depth.rows, depth.columns,
-                                             self.__intrinsic, device=o3d.core.Device("CUDA:1"))
-        raycast_frame = o3d.t.pipelines.slam.Frame(depth.rows, depth.columns,
-                                             self.__intrinsic, device=o3d.core.Device("CUDA:1"))
+    # def create_point_cloud2(self, rgb, depth):
+    #     # T_frame_to_model = o3d.core.Tensor(np.identity(4))
+    #     rgb = o3d.geometry.Image(rgb)
+    #     depth = o3d.geometry.Image(depth)
+    #     input_frame = o3d.t.pipelines.slam.Frame(depth.rows, depth.columns,
+    #                                          self.__intrinsic, device=o3d.core.Device("CUDA:1"))
+    #     raycast_frame = o3d.t.pipelines.slam.Frame(depth.rows, depth.columns,
+    #                                          self.__intrinsic, device=o3d.core.Device("CUDA:1"))
         
-        input_frame.set_data_from_image('depth', depth)
-        input_frame.set_data_from_image('color', rgb)
+    #     input_frame.set_data_from_image('depth', depth)
+    #     input_frame.set_data_from_image('color', rgb)
 
-        result = self.__model.track_frame_to_model(input_frame, raycast_frame)
-        T_frame_to_model = T_frame_to_model @ result.transformation
+    #     result = self.__model.track_frame_to_model(input_frame, raycast_frame)
+    #     T_frame_to_model = T_frame_to_model @ result.transformation
 
-        self.__cams.append(T_frame_to_model.cpu().numpy())
-        self.__model.update_frame_pose(self.i, T_frame_to_model)
-        self.__model.integrate(input_frame)
-        self.__model.synthesize_model_frame(raycast_frame)
-        self.i+=1
-    
+    #     self.__cams.append(T_frame_to_model.cpu().numpy())
+    #     self.__model.update_frame_pose(self.i, T_frame_to_model)
+    #     self.__model.integrate(input_frame)
+    #     self.__model.synthesize_model_frame(raycast_frame)
+    #     self.i+=1
+        
     def registration(self, rgb, depth, camera_position, camera_orientation):
         pcd, view = self.create_point_cloud(rgb, depth, camera_position, camera_orientation)
         # self.__pcd += pcd
         # self.__cams.append(view)
         # geos = [self.__pcd]
-        # geos.extend(self.__pcd)
-        # self.vis.update_geometry(self.__pcd)
+        # geos.extend(self.__cams)
+      
+        # self.vis.update_geometry(pcd)
+        # self.vis.update_geometry(v)
         # self.vis.poll_events()
         # self.vis.update_renderer()
         
@@ -140,3 +140,42 @@ class R3D:
 # print("Visualize result")
 # pcd_ = pcd.select_by_index(pt_map)
 # o3d.visualization.draw_geometries([pcd_])
+
+# import open3d as o3d
+# import numpy as np
+# import copy
+
+if __name__ == "__main__":
+    o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+    source_raw = o3d.io.read_point_cloud("../../TestData/ICP/cloud_bin_0.pcd")
+    target_raw = o3d.io.read_point_cloud("../../TestData/ICP/cloud_bin_1.pcd")
+    source = source_raw.voxel_down_sample(voxel_size=0.02)
+    target = target_raw.voxel_down_sample(voxel_size=0.02)
+    trans = [[0.862, 0.011, -0.507, 0.0], [-0.139, 0.967, -0.215, 0.7],
+             [0.487, 0.255, 0.835, -1.4], [0.0, 0.0, 0.0, 1.0]]
+    source.transform(trans)
+
+    flip_transform = [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
+    source.transform(flip_transform)
+    target.transform(flip_transform)
+
+    vis = o3d.visualization.Visualizer()
+    vis.create_window()
+    vis.add_geometry(source)
+    vis.add_geometry(target)
+    threshold = 0.05
+    icp_iteration = 100
+    save_image = False
+
+    for i in range(icp_iteration):
+        reg_p2l = o3d.registration.registration_icp(
+            source, target, threshold, np.identity(4),
+            o3d.registration.TransformationEstimationPointToPlane(),
+            o3d.registration.ICPConvergenceCriteria(max_iteration=1))
+        source.transform(reg_p2l.transformation)
+        vis.update_geometry(source)
+        vis.poll_events()
+        vis.update_renderer()
+        if save_image:
+            vis.capture_screen_image("temp_%04d.jpg" % i)
+    vis.destroy_window()

@@ -25,9 +25,9 @@ class R3DROS(R3D):
         super().__init__(depth_trunc, image_width, image_height, fov)
 
         rospy.Subscriber("/airsim_node/"+vehicle_name+"/stereo/Scene", \
-                         Image, self._callback_rgb)
+                         Image, self._callback_rgb, queue_size=1)
         rospy.Subscriber("/airsim_node/"+vehicle_name+"/stereo/DepthPlanar", \
-                         Image, self._callback_depth)
+                         Image, self._callback_depth, queue_size=1)
         rospy.Subscriber("/airsim_node/"+vehicle_name+"/odom_local_ned", \
                          Odometry, self._callback_odom)
 
@@ -68,6 +68,8 @@ class R3DROS(R3D):
         if self.rgb is not None and self.depth is not None and position_ is not None and orientation_ is not None and self.i <= 30:
             position = [position_.x, position_.y, position_.z]
             orientation = [orientation_.x, orientation_.y, orientation_.z, orientation_.w]
-            # rospy.logwarn(f'position : {position} ---- orientation : {orientation}')
-            pcd, cams = self.registration(self.rgb, self.depth.astype(np.float32), position, orientation)
-            rospy.logwarn(f'PCD : {pcd} views {cams}')
+            # rospy.logwarn(f'rgb : {np.asarray(self.rgb).shape} ---- orientation : {orientation}')
+            
+            pcd = self.registration(self.rgb[...,::-1].copy(), self.depth.astype(np.float32), position, orientation)
+            rospy.logwarn(f' PCD : {pcd}')
+            
