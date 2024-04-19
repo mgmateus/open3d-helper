@@ -155,7 +155,8 @@ class R3DROS(R3D):
                  fov : float):
         super().__init__(depth_trunc, image_width, image_height, fov)
 
-        
+        rospy.init_node('open3d')
+
         rgb_sub = message_filters.Subscriber(rgb_topic, Image)
         depth_sub = message_filters.Subscriber(depth_topic, Image)
         
@@ -183,4 +184,16 @@ class R3DROS(R3D):
             
             self.pub_pcd.publish(ros_pcd)
             self.pcd_frame_id += 1
-        
+            
+if __name__ == "__main__":
+    print('oiiiii')
+    rgb = '/airsim_node/Hydrone/stereo/Scene'
+    depth = '/airsim_node/Hydrone/stereo/DepthPlanar'
+    out = '/airsim_node/Hydrone/stereo/points'
+    dt = 1000
+    w = 600
+    h = 300
+    fov = 90
+    r = R3DROS(rgb, depth,out,dt, w,h,fov)
+    import time
+    time.sleep(10)
